@@ -1,0 +1,454 @@
+---
+title: "Shiny 1 -Class 29 <br>2024 Nov 11"
+author: "MA615"
+format: revealjs
+editor: visual
+---
+
+```{=html}
+<script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js""></script>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+</script>
+```
+![](hadley.png)
+
+## Shiny in the MA615 plan
+
+![](Overview-MA615-pg-nov11.png)
+
+## Material for Shiny
+
+-   Hadley's Mastering Shiny with supporting material
+
+    -   <a href="https://mastering-shiny.org/basic-app.html" target="_blank">H.Wickham, *Mastering Shiny*</a>
+    -   <a href="https://mastering-shiny-solutions.netlify.app/" target="_blank">H. Baek, *Mastering Shiny Solutions* </a>
+    -   <a href="https://mastering-shiny-solutions.org/" target="_blank">The R4DS Online Learning Community, *Mastering Shiny Solutions Solutions*</a>
+    -   <a href="https://bookdown.org/hadrien/how_to_build_a_shiny_app_from_scratch" target="_blank">Hadrien\@rstudio.com, *how to build a shiny app from scratch* </a>
+
+-   <a href="https://rstudio.github.io/cheatsheets/shiny-python.pdf" target="_blank">Shiny cheatsheet</a>
+
+-   Examples
+
+## Cheatsheet
+
+![](shiny-cs_Page_1.jpg)
+
+------------------------------------------------------------------------
+
+![](shiny-cs_Page_2.jpg)
+
+## Examples
+
+Hadley_1 Hadley_2
+
+### Homework (Github link due on Friday, 15 Nov. )
+
+1.  What is the difference between Hadley_1 and Hadley_2? Use the functions Katia showed last Wednesday to investigate the difference.
+
+#The difference between the two server functions provided earlier can be explained using concepts and functions from this detailed file, especially by focusing on optimization through reuse of computation and avoiding redundancy.
+
+#Hadley_1:The dataset is fetched multiple times, independently for each output.This behavior is similar to the "growing vectors" or "loop redundancy" problems in your file:Each time get(input$dataset) is called, the dataset is fetched again.Redundant computation happens, wasting time and resources.
+
+#Hadley_2:The dataset is fetched once and stored in the dataset() reactive expression.The reactive expression caches the result and only recomputes if input$dataset changes.This method avoids redundancy and ensures efficiency, much like pre-allocating memory or using vectorized operations.
+
+#summary:The second server function (using reactive) aligns with the principles of pre-allocating memory, caching computations, and using vectorization. It eliminates redundancy and improves performance, just as the examples in the file showcase for efficient vector/matrix operations.
+
+
+2.  Prepare Chapters 2-4 from Mastering Shiny. complete in submit the homework in sections 2.3.5, 3.3.6, and 4.8.
+
+2.3.5:
+1.Which of and should each of the following render functions be paired with?textOutput(b,d)verbatimTextOutput(a,c)
+
+a.renderPrint(summary(mtcars))
+
+b.renderText("Good morning!")
+
+c.renderPrint(t.test(1:5, 2:6))
+
+d.renderText(str(lm(mpg ~ wt, data = mtcars)))
+
+2.Re-create the Shiny app from Section 2.3.3, this time setting height to 300px and width to 700px. Set the plot “alt” text so that a visually impaired user can tell that its a scatterplot of five random numbers.
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  tags$div(
+    plotOutput("plot", width = "700px", height = "300px"),
+    tags$p("A scatterplot of five random numbers.", class = "sr-only") # Screen reader-only text
+  )
+)
+
+server <- function(input, output, session) {
+  output$plot <- renderPlot({
+    plot(1:5, main = "Scatterplot of Five Numbers")
+  }, res = 96)
+}
+
+shinyApp(ui, server)
+
+```
+
+
+3.
+```{r}
+library(shiny)
+library(DT)
+
+ui <- fluidPage(
+  DTOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- renderDT(
+    mtcars, 
+    options = list(
+      pageLength = 5,
+      searching = FALSE,
+      ordering = FALSE,
+      info = FALSE,
+      lengthChange = FALSE,
+      paging = TRUE
+    )
+  )
+}
+
+shinyApp(ui, server)
+
+```
+
+4.
+```{r}
+library(shiny)
+library(reactable)
+
+ui <- fluidPage(
+  reactableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- renderReactable(
+    reactable(
+      mtcars,
+      pagination = TRUE,
+      searchable = FALSE,
+      sortable = FALSE,
+      showPageInfo = FALSE,
+      defaultPageSize = 5
+    )
+  )
+}
+
+shinyApp(ui, server)
+```
+
+3.3.6
+1.
+```{r}
+# Corrected server functions for the provided UI
+
+# Fixed server1
+server1 <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+
+# Fixed server2
+server2 <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+
+# Fixed server3
+server3 <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+```
+
+2.
+```{r}
+library(DiagrammeR)
+# Define graph for server1
+graph1 <- grViz("
+digraph server1 {
+  rankdir = LR;
+  node [shape = box, style = filled, fillcolor = lightblue];
+
+  input_a [label = 'input$a'];
+  input_b [label = 'input$b'];
+  input_d [label = 'input$d'];
+  c [label = 'c()'];
+  e [label = 'e()'];
+  output_f [label = 'output$f'];
+
+  input_a -> c;
+  input_b -> c;
+  c -> e;
+  input_d -> e;
+  e -> output_f;
+}
+")
+
+# Define graph for server2
+graph2 <- grViz("
+digraph server2 {
+  rankdir = LR;
+  node [shape = box, style = filled, fillcolor = lightgreen];
+
+  input_x1 [label = 'input$x1'];
+  input_x2 [label = 'input$x2'];
+  input_x3 [label = 'input$x3'];
+  input_y1 [label = 'input$y1'];
+  input_y2 [label = 'input$y2'];
+  x [label = 'x()'];
+  y [label = 'y()'];
+  output_z [label = 'output$z'];
+
+  input_x1 -> x;
+  input_x2 -> x;
+  input_x3 -> x;
+  x -> output_z;
+  input_y1 -> y;
+  input_y2 -> y;
+  y -> output_z;
+}
+")
+
+# Define graph for server3
+graph3 <- grViz("
+digraph server3 {
+  rankdir = LR;
+  node [shape = box, style = filled, fillcolor = lightcoral];
+
+  input_a [label = 'input$a'];
+  input_b [label = 'input$b'];
+  input_c [label = 'input$c'];
+  input_d [label = 'input$d'];
+  a [label = 'a()'];
+  b [label = 'b()'];
+  c [label = 'c()'];
+  d [label = 'd()'];
+
+  input_a -> a;
+  a -> b;
+  input_b -> b;
+  b -> c;
+  input_c -> c;
+  c -> d;
+  input_d -> d;
+}
+")
+
+# Render graphs
+graph1
+graph2
+graph3
+
+```
+
+3.
+#This code will fail because the names var and range are bad choices for reactive expressions in R.
+#var is the name of a base R function used for calculating variance.If you name a reactive expression var, it will mask the base R function within its scope.This can lead to unexpected behavior when you or others attempt to use the var() function elsewhere in your code or within the app.
+#range is also the name of a base R function that calculates the range of a numeric vector.Similarly to var, naming a reactive expression range will overwrite the base function, causing errors or unexpected behavior when attempting to call range().
+
+4.8.
+1.
+```{r}
+library(DiagrammeR)
+
+# Reactive graph for the Prototype App
+graph_prototype <- grViz("
+digraph prototype {
+  rankdir = LR;
+  node [shape = box, style = filled, fillcolor = lightblue];
+
+  input_code [label = 'input$code'];
+  selected [label = 'selected()'];
+  summary [label = 'summary()'];
+  output_diag [label = 'output$diag'];
+  output_body_part [label = 'output$body_part'];
+  output_location [label = 'output$location'];
+  output_age_sex [label = 'output$age_sex'];
+
+  input_code -> selected;
+  selected -> output_diag;
+  selected -> output_body_part;
+  selected -> output_location;
+  selected -> summary;
+  summary -> output_age_sex;
+}
+")
+
+# Reactive graph for the Rate vs Count App
+graph_rate_vs_count <- grViz("
+digraph rate_vs_count {
+  rankdir = LR;
+  node [shape = box, style = filled, fillcolor = lightgreen];
+
+  input_code [label = 'input$code'];
+  input_y [label = 'input$y'];
+  selected [label = 'selected()'];
+  summary [label = 'summary()'];
+  output_diag [label = 'output$diag'];
+  output_body_part [label = 'output$body_part'];
+  output_location [label = 'output$location'];
+  output_age_sex [label = 'output$age_sex'];
+
+  input_code -> selected;
+  selected -> output_diag;
+  selected -> output_body_part;
+  selected -> output_location;
+  selected -> summary;
+  summary -> output_age_sex;
+  input_y -> output_age_sex;
+}
+")
+
+# Reactive graph for the Narrative App
+graph_narrative <- grViz("
+digraph narrative {
+  rankdir = LR;
+  node [shape = box, style = filled, fillcolor = lightcoral];
+
+  input_code [label = 'input$code'];
+  input_story [label = 'input$story'];
+  selected [label = 'selected()'];
+  summary [label = 'summary()'];
+  narrative_sample [label = 'narrative_sample()'];
+  output_diag [label = 'output$diag'];
+  output_body_part [label = 'output$body_part'];
+  output_location [label = 'output$location'];
+  output_age_sex [label = 'output$age_sex'];
+  output_narrative [label = 'output$narrative'];
+
+  input_code -> selected;
+  selected -> output_diag;
+  selected -> output_body_part;
+  selected -> output_location;
+  selected -> summary;
+  selected -> narrative_sample;
+  input_story -> narrative_sample;
+  narrative_sample -> output_narrative;
+  summary -> output_age_sex;
+}
+")
+
+# Render graphs
+graph_prototype
+graph_rate_vs_count
+graph_narrative
+
+```
+
+2.
+#If you flip fct_infreq() and fct_lump() in the code that reduces the summary tables, the behavior will change, and the results will likely not match your expectations. 
+#The original order (fct_infreq() followed by fct_lump()) ensures the top n most frequent levels are retained and displayed in order of frequency, which is typically what you want when summarizing data. Flipping them changes the behavior and likely results in an unintuitive and less useful output.
+
+3.
+```{r}
+# Fixed server1
+server1 <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+
+# Fixed server2
+server2 <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+
+# Fixed server3
+server3 <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+
+# Add an input control for the number of rows to display in summary tables
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  numericInput("num_rows", "Number of rows to display:", value = 5, min = 1, step = 1),
+  textOutput("greeting")
+)
+
+server <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+
+  output$summary_table <- renderTable({
+    head(iris, n = input$num_rows)  
+  })
+}
+
+```
+
+4.
+```{r}
+library(shiny)
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  numericInput("num_rows", "Number of rows to display:", value = 5, min = 1, step = 1),
+  textOutput("greeting"),
+  actionButton("prev", "Previous Narrative"),
+  actionButton("next", "Next Narrative"),
+  textOutput("narrative")
+)
+
+server <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+  
+  
+output$summary_table <- renderTable({
+  head(iris, n = input$num_rows)
+})
+
+narratives <- reactiveVal(c("Narrative 1", "Narrative 2", "Narrative 3"))
+current_index <- reactiveVal(1)
+output$narrative <- renderText({
+  narratives()[current_index()]
+})
+
+observeEvent(input, {
+  if (length(narratives()) > 0) {
+    current_index((current_index() %% length(narratives())) + 1)
+  }
+})
+observeEvent(input, {
+  if (length(narratives()) > 0) {
+    current_index(ifelse(current_index() == 1, length(narratives()), current_index() - 1))
+  }
+})
+output$narrative <- renderText({
+  if (length(narratives()) > 0) {
+    narratives()[current_index()]
+  } else {
+    "No narratives available"
+  }
+})
+}
+shinyApp(ui, server)
+
+
+```
