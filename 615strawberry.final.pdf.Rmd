@@ -1,0 +1,460 @@
+---
+title: "615strawberry"
+author: "Yishun Zhang"
+date: "2024-10-07"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Set-up
+
+```{r}
+#| label: load libraries and set options
+#| warning: false
+#| message: false
+
+library(knitr)
+library(kableExtra)
+library(tidyverse)
+
+
+```
+Read the data and take a first look
+
+```{r}
+#| label: read data - glimpse 
+
+library(tidyverse)
+
+strawberry_data <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv")
+
+glimpse(strawberry_data)
+
+head(strawberry_data)
+
+```
+
+I have 12699 rows and 21 columns.
+
+All I can see from the glimpse is I have date, location, values and coefficients of variation.
+
+Examine the data. How is it organized?
+
+```{r}
+#| label: explore organization 1 
+
+library(tidyverse)
+
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv", col_names = TRUE)
+
+glimpse(strawberry)
+
+summary(strawberry)
+
+colSums(is.na(strawberry))
+str(strawberry)
+
+distinct_states <- strawberry |> distinct(State)
+print(distinct_states)
+
+state_counts <- strawberry |> group_by(State) |> count()
+print(state_counts)
+
+summary(strawberry$Value)
+hist(as.numeric(strawberry$Value), main="Distribution of Value", xlab="Value", col="skyblue", breaks=50)
+state_year_check <- strawberry |> group_by(State, Year) |> count()
+print(state_year_check)
+
+duplicates_check <- strawberry |> duplicated()
+sum(duplicates_check)
+
+
+
+```
+
+## remove columns with a single value in all rows
+
+```{r}
+#|label: function def - drop 1-item columns
+library(readr)
+
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv")
+
+glimpse(strawberry)
+
+
+drop_one_value_col <- function(df) {   
+  drop <- NULL  
+  for(i in 1:dim(df)[2]){     
+    if(n_distinct(df[[i]]) == 1){
+      drop <- c(drop, i)
+    }
+  }
+  if(!is.null(drop)){
+    df <- df[,-drop]
+  }
+  return(df)
+}
+
+strawberry <- drop_one_value_col(strawberry)
+
+```
+
+To get better look at the data, look at California.
+
+```{r}
+#| label: explore California only
+library(tidyverse)
+library(readr)
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv")
+glimpse(strawberry)
+strawberry <- strawberry |> 
+  mutate(`Data Item` = str_trim(`Data Item`, side = "both"))
+
+strawberry <- strawberry |>
+  separate(`Data Item`, into = c("Fruit", "Category", "Item", "Metric"), sep = ",", fill = "right")
+strawberry
+california_data <- strawberry |> filter(State == "CALIFORNIA")
+glimpse(california_data)
+unique(california_data$Program)
+unique(california_data$Year)
+unique(california_data$Category)
+california_census <- california_data |> filter(Program == "CENSUS")
+california_survey <- california_data |> filter(Program == "SURVEY")
+glimpse(california_census)
+glimpse(california_survey)
+
+
+```
+
+Explore California to understand the census and survey
+
+```{r}
+#| label: explore Calif census and survey 
+library(tidyverse)
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv", col_names = TRUE)
+
+
+
+california_data <- strawberry |> filter(State == "CALIFORNIA")
+
+calif_census <- california_data |> filter(Program == "CENSUS")
+calif_survey <- california_data |> filter(Program == "SURVEY")
+
+glimpse(calif_census)
+glimpse(calif_survey)
+summary(calif_census)
+summary(calif_survey)
+drop_one_value_col <- function(df) {   
+  drop <- NULL  
+  for(i in 1:dim(df)[2]){     
+    if(n_distinct(df[[i]]) == 1){
+      drop <- c(drop, i)
+    }
+  }
+  if(!is.null(drop)){
+    df <- df[,-drop]
+  }
+  return(df)
+}
+strawberry <- strawberry |>
+mutate(`Data Item` = str_replace_all(`Data Item`, " - ", ","))
+#Split 'Data Item' into 4 columns
+strawberry <- strawberry |>
+separate_wider_delim( cols = `Data Item`,
+delim = ",",
+names = c("Fruit",
+"Category",
+"Item",
+"Metric"),
+too_many = "merge",
+too_few = "align_start"
+)
+#Remove 'measured in' to metric columns
+strawberry <- strawberry |>
+mutate(Metric = ifelse(grepl("MEASURED IN", Item), Item, Metric), # Move the 'Item' value to 'Metric' if it contains 'MEASURED IN'
+Item = ifelse(grepl("MEASURED IN", Item), NA, Item) # Set 'Item' to NA where we moved the value
+)
+#Remove 'production' to its correct way.
+strawberry <- strawberry |>
+mutate(
+Item = ifelse(grepl("PRODUCTION", Metric), "PRODUCTION", Item), # Move 'PRODUCTION' to 'Item'
+Metric = ifelse(grepl("PRODUCTION", Metric), sub("PRODUCTION, ", "", Metric), Metric) # Remove 'PRODUCTION' from 'Metric'
+)
+#Remove 'utilized' from category to Item
+3
+strawberry <- strawberry |>
+mutate(
+Item = ifelse(grepl("UTILIZED", Category, ignore.case = TRUE),
+paste("UTILIZED", Item, sep = " "), # Combine 'Item' with 'Utilized'
+Item), # Keep 'Item' unchanged if 'Utilized' not found
+Category = ifelse(grepl("UTILIZED", Category, ignore.case = TRUE), NA, Category)# Set 'Category' to NA where 'Utilized' is moved
+)
+#Consider a better waty to move items in one step.
+movingitem<- c("ACRES BEARING", "ACRES NON-BEARING", "ACRES GROWN", "OPERATIONS WITH AREA BEARING", "YIELD", "ACRES HARVESTED", "ACRES PLANTED", "OPERATIONS WITH AREA GROWN", "OPERATIONS WITH AREA NON-BEARING","PRODUCTION")
+# Move terms from 'Metric' or 'Category' to 'Item' without replacing 'Metric' data
+strawberry <- strawberry |>
+mutate(Item = ifelse(grepl(paste(movingitem, collapse = "|"), Category,
+ignore.case = TRUE) & is.na(Item), Category,
+ifelse(grepl(paste(movingitem, collapse = "|"), Category, ignore.case = TRUE),
+paste(Item, Category, sep = ", "), Item)
+),
+Category = ifelse(grepl(paste(movingitem, collapse = "|"), Category,
+ignore.case = TRUE),
+NA, Category)
+)
+
+
+
+
+```
+
+### `Data Item` into (fruit, category, item)
+
+```{r}
+#|label: split Data Item
+library(tidyverse)
+
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv", col_names = TRUE)
+
+census_data <- strawberry |> filter(Program == "CENSUS")
+survey_data <- strawberry |> filter(Program == "SURVEY")
+drop_one_value_col <- function(df) {   
+  drop <- NULL  
+  for(i in 1:dim(df)[2]){     
+    if(n_distinct(df[[i]]) == 1){
+      drop <- c(drop, i)
+    }
+  }
+  if(!is.null(drop)){
+    df <- df[,-drop]
+  }
+  return(df)
+}
+census_data <- drop_one_value_col(census_data)
+survey_data <- drop_one_value_col(survey_data)
+
+```
+
+
+## now exam the Fruit column -- find hidden sub-columns
+
+```{r}
+
+library(tidyverse)
+
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv", col_names = TRUE)
+
+strawberry <- strawberry |>
+separate_wider_delim(
+cols = Domain,
+delim = " , ",
+names = c("Area Grown", "Fertilize", "Organic", "Chemical"),
+too_many = "merge",
+too_few = "align_start"
+)
+#Loading variables to each column
+strawberry <- strawberry |>
+mutate(
+Chemical = ifelse(grepl("CHEMICAL", `Area Grown`, ignore.case = TRUE), `Area Grown`, NA),
+Organic = ifelse(grepl("ORGANIC", `Area Grown`, ignore.case = TRUE), `Area Grown`, NA),
+Fertilize = ifelse(grepl("FERTILIZER", `Area Grown`, ignore.case = TRUE), `Area Grown`, NA),
+`Area Grown`= ifelse(grepl("CHEMICAL|ORGANIC|FERTILIZER", `Area Grown`, ignore.case = TRUE), NA, `Area Grown`)
+)
+#Dealing with 'Domain Category' column
+strawberry <- strawberry |>
+mutate(
+Chemical = ifelse(grepl("CHEMICAL", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+Chemical),
+Organic = ifelse(grepl("ORGANIC", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+Organic),
+Fertilize = ifelse(grepl("FERTILIZER", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+Fertilize),
+`Area Grown` = ifelse(grepl("AREA", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+`Area Grown`),
+`Domain Category` = ifelse(grepl("CHEMICAL|ORGANIC|FERTILIZER|AREA", `Domain Category`, ignore.case = TRUE), NA, `Domain Category`)
+)
+#Move 'Total' to its best place
+strawberry <- strawberry |> 
+  mutate(`Data Item` = str_trim(`Data Item`, side = "both"))
+
+strawberry <- strawberry |>
+  separate(`Data Item`, into = c("Fruit", "Category", "Item", "Metric"), sep = ",", fill = "right")
+strawberry
+strawberry <- strawberry |>
+mutate(Item = ifelse(grepl("Total", `Area Grown`, ignore.case = TRUE),
+paste("Total", Item, sep = " "),
+Item),
+`Area Grown` = ifelse(grepl("Total", `Area Grown`, ignore.case = TRUE), NA, `Area Grown`)
+)
+
+
+
+  
+```
+
+```{r}
+
+
+library(tidyverse)
+
+strawberry <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv", col_names = TRUE)
+strawberry <- strawberry |>
+separate_wider_delim(
+cols = Domain,
+delim = " , ",
+names = c("Area Grown", "Fertilize", "Organic", "Chemical"),
+too_many = "merge",
+too_few = "align_start"
+)
+#Loading variables to each column
+strawberry <- strawberry |>
+mutate(
+Chemical = ifelse(grepl("CHEMICAL", `Area Grown`, ignore.case = TRUE), `Area Grown`, NA),
+Organic = ifelse(grepl("ORGANIC", `Area Grown`, ignore.case = TRUE), `Area Grown`, NA),
+Fertilize = ifelse(grepl("FERTILIZER", `Area Grown`, ignore.case = TRUE), `Area Grown`, NA),
+`Area Grown`= ifelse(grepl("CHEMICAL|ORGANIC|FERTILIZER", `Area Grown`, ignore.case = TRUE), NA, `Area Grown`)
+)
+#Dealing with 'Domain Category' column
+strawberry <- strawberry |>
+mutate(
+Chemical = ifelse(grepl("CHEMICAL", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+Chemical),
+Organic = ifelse(grepl("ORGANIC", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+Organic),
+Fertilize = ifelse(grepl("FERTILIZER", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+Fertilize),
+`Area Grown` = ifelse(grepl("AREA", `Domain Category`, ignore.case = TRUE),
+`Domain Category`,
+`Area Grown`),
+`Domain Category` = ifelse(grepl("CHEMICAL|ORGANIC|FERTILIZER|AREA", `Domain Category`, ignore.case = TRUE), NA, `Domain Category`)
+)
+strawberry <- strawberry |>
+mutate(Chemical = str_replace_all(Chemical, "[,:=()]", ","))
+#Split it into three columns
+strawberryc<- strawberry |>
+separate_wider_delim(
+cols = Chemical,
+delim = ",",
+names = c("Type", "Ingredient", "Code"), #Separate Chemical into type, ingredient, and code.
+too_many = "merge",
+too_few = "align_start"
+)
+#Filling in the columns
+strawberryc<- strawberryc |>
+mutate(
+Type = ifelse(Type == "CHEMICAL" | is.na(Type), Ingredient, Type),Ingredient = ifelse(!is.na(Ingredient), str_extract(Code, "\\b[A-Za-z\\-\\.\\s]+\\b"), Ingredient), 
+Code = str_replace(Code, "\\b[A-Za-z\\-\\.\\s]+\\b", "")
+)
+#Clean 'Code' Column
+strawberryc <- strawberryc |>
+mutate(
+Code = str_replace_all(Code, "ˆ\\s*,+|,+\\s*$|\\s*,\\s*,+", ""),
+Code = str_trim(Code)
+)
+head(strawberryc)
+
+```
+```{r}
+# Load necessary libraries
+library(tidyverse)
+
+# Read the dataset
+strawberry_data <- read_csv("C:/Users/17756/Downloads/strawberries25_v3.csv")
+
+# Convert 'Value' column to numeric, replacing non-numeric placeholders with NA
+strawberry_data <- strawberry_data %>%
+  mutate(Value = as.numeric(Value))
+
+# Summary statistics of numeric columns
+numeric_summary <- strawberry_data %>% 
+  summarise(across(where(is.numeric), list(mean = mean, sd = sd, min = min, max = max), na.rm = TRUE))
+print(numeric_summary)
+
+# Count unique states and programs
+state_counts <- strawberry_data %>% count(State)
+program_counts <- strawberry_data %>% count(Program)
+
+# Distribution of 'Value' column
+ggplot(strawberry_data, aes(x = Value)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black") +
+  labs(title = 'Distribution of "Value" Column', x = 'Value', y = 'Frequency') +
+  theme_minimal()
+
+# Top 10 states with the most entries
+top_states <- state_counts %>%
+  arrange(desc(n)) %>%
+  head(10)
+
+ggplot(top_states, aes(x = reorder(State, n), y = n)) +
+  geom_bar(stat = "identity", fill = "orange", color = "black") +
+  coord_flip() +
+  labs(title = "Top 10 States with Most Entries", x = "State", y = "Count") +
+  theme_minimal()
+
+# Year-wise data distribution
+year_counts <- strawberry_data %>% 
+  count(Year) %>%
+  arrange(Year)
+
+ggplot(year_counts, aes(x = as.factor(Year), y = n)) +
+  geom_bar(stat = "identity", fill = "green", color = "black") +
+  labs(title = "Data Entries by Year", x = "Year", y = "Count") +
+  theme_minimal()
+
+# Correlation matrix for numeric columns
+numeric_cols <- strawberry_data %>% select(where(is.numeric))
+correlation_matrix <- cor(numeric_cols, use = "complete.obs")
+
+
+# Output summaries
+print("Summary of Numeric Data:")
+print(numeric_summary)
+
+print("Top 10 States by Entry Count:")
+print(top_states)
+
+```
+EDA analysis:
+Summary Statistics of Numeric Data
+We calculated the mean, standard deviation, minimum, and maximum for numeric columns like Value.
+Observations:
+1.The range of values in the Value column might be large, with the mean and median providing a sense of central tendency.
+2.A high standard deviation suggests a wide spread of data, whereas a low standard deviation indicates the data is more concentrated.
+
+Distribution of the "Value" Column
+The histogram shows the frequency distribution of the Value column:
+1.A right-skewed distribution indicates most data points have smaller values, with some large outliers.
+2.A left-skewed distribution suggests most data points have larger values, with some smaller outliers.
+Potential findings:
+1.A flat or multi-modal distribution may indicate the need for subgroup analysis based on states, years, or other factors.
+2.For unusual distributions, consider data transformation, such as log transformation or normalization.
+
+Top 10 States with the Most Data Entries
+The bar chart highlights the top 10 states with the most entries:
+1.California has the highest number of data entries, significantly more than others.
+Florida is the second-largest contributor.
+2.Other states contribute fewer records and may have less influence on the overall analysis.
+Analysis & Recommendations:
+1.Focus on California and Florida for detailed trend and characteristic analyses, as they dominate the dataset.
+2.For states with fewer records, consider aggregating data for regional comparisons.
+
+Yearly Data Distribution
+The bar chart shows the distribution of data entries across different years:
+1.A high number of entries in certain years might indicate more detailed surveys conducted during those times.
+2.Low or missing data in specific years should be further investigated.
+Findings:
+1.If the data distribution across years is even, it is well-suited for trend analysis.
+2.If uneven, consider standardizing the data volume across years for better comparisons.
