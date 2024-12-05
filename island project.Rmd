@@ -1,0 +1,129 @@
+---
+title: "Untitled"
+author: "Yishun Zhang"
+date: "2024-12-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+data <- data.frame(
+  year = 2006:2016,
+  gdp = c(1302.812,1972.995,3283.704,2520.363,3337.447,4596.139,4349.983,4169.791,3345.208,2805.437,2277.717),
+  energy = c(126.828,169.082,211.335,253.589,295.843,338.096,380.350,422.604,464.857,507.044,287.548),
+  Consumption_of_fixed_capital = c(18.039,23.446,29.987,41.048,46.759,56.280,63.922,80.364,88.011,110.706,111.194),
+  education = c(18.207,27.656,47.049,73.046,87.653,94.522,82.142,83.375,113.547,91.762,89.158)
+)
+
+regional_comparison <- data.frame(
+  Country = c("East Timor", "Australia"),
+  Year = c(2016, 2016),
+  GDP = c(2277.717, 1208000) 
+)
+
+# UI
+ui <- fluidPage(
+  titlePanel("East Timor (Timor-Leste) Analysis"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("view", "Select a Module:",
+                  choices = c("Overview", "GDP Projection", "Regional Comparison", "SWOT Analysis")),
+      conditionalPanel(
+        condition = "input.view == 'GDP Projection'",
+        selectInput("projectionVar", "Choose a Variable:", choices = c("Energy", "Consumption_of_fixed_capital", "Education"))
+      ),
+      conditionalPanel(
+        condition = "input.view == 'Regional Comparison'",
+        selectInput("compareVar", "Choose Variable:", choices = c("GDP"))
+      )
+    ),
+    mainPanel(
+      uiOutput("mainUI")
+    )
+  )
+)
+
+# Server
+server <- function(input, output) {
+  output$mainUI <- renderUI({
+    if (input$view == "Overview") {
+      tagList(
+        h3("Overview of East Timor"),
+        plotOutput("worldMap"),
+        plotOutput("islandMap"),
+        tableOutput("keyFacts")
+      )
+    } else if (input$view == "GDP Projection") {
+      plotOutput("variableProjection")
+    } else if (input$view == "Regional Comparison") {
+      tableOutput("regionComparisonTable")
+    } else if (input$view == "SWOT Analysis") {
+      tableOutput("swotTable")
+    }
+  })
+
+  output$worldMap <- renderPlot({
+    ggplot() +
+      borders("world", fill = "gray90", colour = "white") +
+      geom_point(aes(x = 125.56, y = -8.55), color = "red", size = 3) +
+      ggtitle("East Timor Location in the World") +
+      theme_minimal()
+  })
+
+  output$islandMap <- renderPlot({
+    ggplot() +
+      borders("world", xlim = c(124, 126), ylim = c(-9.5, -8), fill = "gray90", colour = "white") +
+      geom_point(aes(x = 125.56, y = -8.55), color = "blue", size = 3) +
+      ggtitle("Detailed Map of East Timor") +
+      theme_minimal()
+  })
+
+  output$keyFacts <- renderTable({
+    data.frame(
+      Key = c("Country", "Population", "GDP", "Capital", "Official Language", "Currency"),
+      Value = c("East Timor", "1.3 Million", "Approx. $3 Billion", "Dili", "Tetum and Portuguese", "US Dollar")
+    )
+  })
+
+  output$variableProjection <- renderPlot({
+    selected_var <- switch(input$projectionVar,
+                           "Energy" = data$energy,
+                           "Consumption_of_fixed_capital" = data$Consumption_of_fixed_capital,
+                           "Education" = data$education)
+    ggplot(data, aes(x = selected_var, y = gdp)) +
+      geom_point(color = "blue", size = 2) +
+      geom_smooth(method = "lm", color = "red", se = FALSE) +
+      ggtitle(paste("Relationship between GDP and", input$projectionVar)) +
+      xlab(input$projectionVar) +
+      ylab("GDP (Million USD)") +
+      theme_minimal()
+  })
+
+  output$regionComparisonTable <- renderTable({
+    regional_comparison
+  })
+
+  output$swotTable <- renderTable({
+    data.frame(
+      Category = c("Strength", "Weakness", "Opportunity", "Threat"),
+      Description = c(
+        "Rich natural resources, growing GDP",
+        "Infrastructure development needed",
+        "Potential for tourism and regional trade",
+        "Impact of climate change and political stability"
+      )
+    )
+  })
+}
+
+# Run App
+shinyApp(ui, server)
+
+```
